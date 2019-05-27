@@ -7,11 +7,18 @@ config = configparser.ConfigParser()
 config_file = config.read("config.ini")
 api_key = config.get("default", "api_key")
 email_user = config.get("default", "email_user")
-email_password = config.get("default", "email_user")
+email_password = config.get("default", "email_password")
 phone_number = config.get("default", "phone_number")
 
+# ToDo: Prepend language to translated object
+# ToDo: Create Quote class for all functions
+# ToDo: Create getters and setters to override defaults
 
-
+"""
+This script will pull a random quote, translate it to any language (Spanish by default) and then send
+it as a text message to the user
+"""
+# Prepare to pull the quote by pre-selecting a category and creating API request
 def preparequote():
     categories = ["inspire", "management", "sports", "life", "funny", "love", "art", "students"]
     category = random.choice(categories)
@@ -19,39 +26,42 @@ def preparequote():
     quote_request = "{}category={}".format(endpoint, category)
     return quote_request
 
-
+# Send API request and extract the quote and author
 def getquote(quote_request):
     response = requests.get(quote_request).json()
     quote = response['contents']['quotes'][0]['quote']
     author = response['contents']['quotes'][0]['author']
     return quote
 
-
+# Prepare the API call for the translation for each language
 def preparetranslation(translatetext, languages=['es'], api_key=api_key):
     api_requests = []
     for elem in languages:
         api_request = "https://translation.googleapis.com/language/translate/" \
                       "v2?target={}&key={}={}".format(elem, api_key, translatetext)
         api_requests.append(api_request)
+#        language = elem
     return api_requests
 
 
-def gettranslation(api_requests, quote):
+# Send each request and receive translation responses to store in one object
+def gettranslation(api_requests, quote, languages=['es']):
     translations = ["English: \"{}\" ".format(quote)]
-
+    x = 0
     for elem in api_requests:
         response = requests.post(elem).json()
         translation = response['data']['translations'][0]
         translatedtext = translation['translatedText']
         sourceLanguage = translation['detectedSourceLanguage']
  #       preparedtext = "English: \"{}\" \n Spanish: \"{}\" ".format(translatedtext, translatedtext)
-        preparedtext = "{}: \"{}\" ".format(sourceLanguage, translatedtext)
+        preparedtext = "{}: \"{}\" ".format(languages[x], translatedtext)
+        x += 1
         translations.append(preparedtext)
-    translations = ' '.join(translations)
+    translations = ' \n'.join(translations)
     return translations
 
-
-def preparetext(translations, quote, phone_number):
+# Prepare text message with the original quote and it's translations
+def preparetext(translations, quote, phone_number=phone_number):
     sender = 'Mike'
     to = ['{}@mms.att.net'.format(phone_number)]
     subject = "Daily Translation"
@@ -65,14 +75,15 @@ def preparetext(translations, quote, phone_number):
     """ % (sender, ", ".join(to), subject, text)
     return message, sender, to
 
-
-def sendtext(message, sender, to, email_user, email_password):
+# Send the text message using SMTP
+def sendtext(message, sender, to, email_user=email_user, email_password=email_password):
     server = smtplib.SMTP("smtp.gmail.com", 587)
     server.starttls()
     server.login(email_user, email_password)
     server.sendmail(sender, to, message.encode('utf8'))
     server.quit()
 
+# EXPERIMENTAL -- Sends email/text .. likely won't use it
 def sendemail(to, sender, message):
     from email.message import  EmailMessage
     em = EmailMessage()
@@ -82,9 +93,3 @@ def sendemail(to, sender, message):
     em['Subject'] = 'test'
 
 
-
-
-
-
-# quote = (request.json())['quote']
-# subprocess.call('espeak ' + quote, shell=True)
