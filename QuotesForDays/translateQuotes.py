@@ -6,13 +6,18 @@ import configparser
 config = configparser.ConfigParser()
 config_file = config.read("config.ini")
 api_key = config.get("default", "api_key")
+user_config = config.get("default", "user_config")
+
 email_user = config.get("default", "email_user")
 email_password = config.get("default", "email_password")
 phone_number = config.get("default", "phone_number")
+domain = 'mms.att.net'
 
 # ToDo: Prepend language to translated object
 # ToDo: Create Quote class for all functions
 # ToDo: Create getters and setters to override defaults
+# ToDo: Setup timer so that each user receives one update per 24 hours --> allow users to select which hour
+# ToDo: Create configuration file and classes to drive the code
 
 """
 This script will pull a random quote, translate it to any language (Spanish by default) and then send
@@ -57,13 +62,13 @@ def gettranslation(api_requests, quote, languages=['es']):
         preparedtext = "{}: \"{}\" ".format(languages[x], translatedtext)
         x += 1
         translations.append(preparedtext)
-    translations = ' \n'.join(translations)
+    translations = '\n \n'.join(translations)
     return translations
 
 # Prepare text message with the original quote and it's translations
-def preparetext(translations, quote, phone_number=phone_number):
+def preparetext(translations, quote, phone_number=phone_number, domain=domain):
     sender = 'Mike'
-    to = ['{}@mms.att.net'.format(phone_number)]
+    to = ['{}@{}'.format(phone_number, domain)]
     subject = "Daily Translation"
     text = translations
     message = """\
@@ -76,10 +81,12 @@ def preparetext(translations, quote, phone_number=phone_number):
     return message, sender, to
 
 # Send the text message using SMTP
-def sendtext(message, sender, to, email_user=email_user, email_password=email_password):
+def sendtext(message, sender, to, email_user=email_user, email_password=email_password, phone_num=phone_number):
     server = smtplib.SMTP("smtp.gmail.com", 587)
     server.starttls()
     server.login(email_user, email_password)
+#    phone_num = phone_num.split(' ')
+#    for nums in phone_num:
     server.sendmail(sender, to, message.encode('utf8'))
     server.quit()
 
@@ -92,4 +99,6 @@ def sendemail(to, sender, message):
     em['From'] = sender
     em['Subject'] = 'test'
 
+def timer(hr):
+    return hr
 
